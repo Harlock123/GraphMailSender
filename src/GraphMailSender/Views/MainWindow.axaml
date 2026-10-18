@@ -1,0 +1,119 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:GraphMailSender.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="700"
+        x:Class="GraphMailSender.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Graph Mail Sender"
+        Width="640" Height="700"
+        MinWidth="520" MinHeight="520">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,8,0,4" />
+        </Style>
+        <Style Selector="TextBlock.label">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Opacity" Value="0.65" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.status">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.status.error">
+            <Setter Property="Foreground" Value="#C62828" />
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+    </Window.Styles>
+
+    <ScrollViewer>
+        <StackPanel Margin="20" Spacing="0">
+
+            <TextBlock Classes="section" Text="Azure app registration" />
+
+            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="label" Text="Tenant ID" />
+                <TextBox Grid.Row="0" Grid.Column="1"
+                         Text="{Binding TenantId}"
+                         PlaceholderText="contoso.onmicrosoft.com or a GUID" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="label" Text="Client ID" />
+                <TextBox Grid.Row="1" Grid.Column="1"
+                         Text="{Binding ClientId}"
+                         PlaceholderText="Application (client) ID" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="label" Text="Client secret" />
+                <TextBox Grid.Row="2" Grid.Column="1"
+                         Text="{Binding ClientSecret}"
+                         PasswordChar="•"
+                         RevealPassword="{Binding #ShowSecret.IsChecked}"
+                         PlaceholderText="Client secret value" />
+
+                <CheckBox Grid.Row="3" Grid.Column="1" Name="ShowSecret"
+                          Content="Show secret" Margin="0,0,0,8" />
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Classes="label" Text="Send as" />
+                <TextBox Grid.Row="4" Grid.Column="1"
+                         Text="{Binding SenderAddress}"
+                         PlaceholderText="mailbox the message is sent from" />
+            </Grid>
+
+            <TextBlock Classes="hint"
+                       Text="Needs the Mail.Send application permission with admin consent. The secret is never saved to disk; tenant/client/sender are remembered. GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET and GRAPH_SENDER prefill these fields." />
+
+            <TextBlock Classes="section" Text="Message" />
+
+            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,*">
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="label" Text="To" />
+                <TextBox Grid.Row="0" Grid.Column="1"
+                         Text="{Binding Recipients}"
+                         PlaceholderText="someone@example.com; another@example.com" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="label" Text="Subject" />
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Subject}" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="label" Text="Message"
+                           VerticalAlignment="Top" Margin="0,6,12,0" />
+                <TextBox Grid.Row="2" Grid.Column="1"
+                         Text="{Binding Body}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         MinHeight="180"
+                         VerticalContentAlignment="Top" />
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,0,0,12">
+                <CheckBox Content="HTML body" IsChecked="{Binding IsHtml}" />
+                <CheckBox Content="Save to Sent Items" IsChecked="{Binding SaveToSentItems}" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="Send"
+                        Command="{Binding SendCommand}"
+                        IsDefault="True"
+                        MinWidth="110"
+                        Padding="16,8" />
+                <ProgressBar IsIndeterminate="True"
+                             IsVisible="{Binding IsBusy}"
+                             Width="120"
+                             VerticalAlignment="Center" />
+                <TextBlock Classes="status"
+                           Classes.error="{Binding StatusIsError}"
+                           IsVisible="{Binding HasStatus}"
+                           Text="{Binding StatusMessage}" />
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</Window>
