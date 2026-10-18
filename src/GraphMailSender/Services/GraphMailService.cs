@@ -132,8 +132,29 @@ public sealed class GraphMailService
             // A bad secret/client id means the cached credential is useless.
             _credential = null;
             _cachedFor = null;
-            throw new GraphMailException($"Sign-in failed: {ex.Message}", ex);
+            throw new GraphMailException($"Sign-in failed: {Flatten(ex)}", ex);
         }
+    }
+
+    /// <summary>
+    /// Joins an exception chain into one line. Azure.Identity's own message is just
+    /// "ClientSecretCredential authentication failed:" with nothing after it - the AADSTS
+    /// code that actually says what went wrong is down in the inner MsalServiceException.
+    /// </summary>
+    private static string Flatten(Exception exception)
+    {
+        var parts = new List<string>();
+
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            var message = current.Message?.Trim().TrimEnd(':').Trim();
+            if (!string.IsNullOrEmpty(message) && !parts.Contains(message))
+            {
+                parts.Add(message);
+            }
+        }
+
+        return parts.Count > 0 ? string.Join(" - ", parts) : exception.GetType().Name;
     }
 
     /// <summary>Pull the human-readable bit out of a Graph error envelope, falling back to the raw body.</summary>

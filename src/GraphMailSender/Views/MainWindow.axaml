@@ -108,11 +108,16 @@
                              IsVisible="{Binding IsBusy}"
                              Width="120"
                              VerticalAlignment="Center" />
-                <TextBlock Classes="status"
-                           Classes.error="{Binding StatusIsError}"
-                           IsVisible="{Binding HasStatus}"
-                           Text="{Binding StatusMessage}" />
             </StackPanel>
+
+            <!-- Own row, not beside the button: a horizontal StackPanel gives children
+                 unconstrained width, so TextWrapping never kicks in and long AADSTS
+                 messages get clipped off the right edge. -->
+            <TextBlock Classes="status"
+                       Classes.error="{Binding StatusIsError}"
+                       IsVisible="{Binding HasStatus}"
+                       Text="{Binding StatusMessage}"
+                       Margin="0,14,0,0" />
 
         </StackPanel>
     </ScrollViewer>
