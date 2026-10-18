@@ -1,5 +1,11 @@
 # Graph Mail Sender
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![Avalonia](https://img.shields.io/badge/Avalonia-12.1-8B44AC)](https://avaloniaui.net/)
+[![Microsoft Graph](https://img.shields.io/badge/Microsoft%20Graph-v1.0-0078D4)](https://learn.microsoft.com/en-us/graph/api/user-sendmail)
+[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://avaloniaui.net/)
+
 A small Avalonia desktop app (.NET 10) that sends a single email through the Microsoft Graph
 API. You type the app-registration details, a recipient, a subject and a message, and it
 `POST`s to `/users/{sender}/sendMail`.
@@ -80,3 +86,7 @@ models, swap it for the `Microsoft.Graph` SDK — the service is the only file t
 | `Sign-in failed: AADSTS700016` | Wrong client ID, or app not in that tenant |
 | `Graph returned 403: ErrorAccessDenied` | `Mail.Send` not granted as an *application* permission, or admin consent missing |
 | `Graph returned 404: ResourceNotFound` | The **Send as** mailbox doesn't exist (or has no Exchange Online mailbox) |
+
+## License
+
+[MIT](LICENSE) — © 2026 Lonnie Watson
