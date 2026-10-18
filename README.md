@@ -1,5 +1,6 @@
 # Graph Mail Sender
 
+[![build](https://github.com/Harlock123/GraphMailSender/actions/workflows/build.yml/badge.svg)](https://github.com/Harlock123/GraphMailSender/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Avalonia](https://img.shields.io/badge/Avalonia-12.1-8B44AC)](https://avaloniaui.net/)
