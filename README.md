@@ -132,14 +132,18 @@ sends one message at a time, so you will only meet these limits by driving it ha
 | Field | What it is |
 | --- | --- |
 | To | One or more addresses separated by comma, semicolon or whitespace. Duplicates are removed; each is validated before anything is sent |
+| Cc | Optional carbon-copy addresses, same separators as To |
+| Bcc | Optional blind-carbon-copy addresses, same separators as To. Other recipients cannot see these |
 | Subject | Message subject. May be left empty |
 | Message | Body text. Required |
 | HTML body | Sends the body as `contentType: HTML` instead of `Text`. The box is a plain text editor either way — paste markup in yourself |
 | Save to Sent Items | Whether Graph keeps a copy in the sender's Sent Items. On by default |
 
 **Send** is disabled until Tenant ID, Client ID, Client secret, a valid *Send as* address, at
-least one valid recipient, and a non-empty body are all present. Subject is the only optional
-field.
+least one **To** recipient, and a non-empty body are all present. Subject, Cc and Bcc are
+optional — a Cc or Bcc address alone will not satisfy the recipient requirement, and empty
+Cc/Bcc fields are left out of the Graph request entirely rather than sent as empty arrays.
+Every address across all three fields is validated before anything is sent.
 
 ## Settings and secrets
 

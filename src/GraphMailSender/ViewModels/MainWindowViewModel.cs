@@ -18,6 +18,8 @@ public sealed class MainWindowViewModel : ViewModelBase
     private string _clientSecret = "";
     private string _senderAddress = "";
     private string _recipients = "";
+    private string _ccRecipients = "";
+    private string _bccRecipients = "";
     private string _subject = "";
     private string _body = "";
     private bool _isHtml;
@@ -74,6 +76,20 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         get => _recipients;
         set => SetAndRevalidate(ref _recipients, value);
+    }
+
+    /// <summary>Optional carbon-copy addresses, same separators as <see cref="Recipients"/>.</summary>
+    public string CcRecipients
+    {
+        get => _ccRecipients;
+        set => SetAndRevalidate(ref _ccRecipients, value);
+    }
+
+    /// <summary>Optional blind-carbon-copy addresses, same separators as <see cref="Recipients"/>.</summary>
+    public string BccRecipients
+    {
+        get => _bccRecipients;
+        set => SetAndRevalidate(ref _bccRecipients, value);
     }
 
     public string Subject
@@ -150,8 +166,14 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         try
         {
-            var recipients = ParseRecipients(Recipients);
-            var invalid = recipients.Where(address => !IsEmail(address)).ToList();
+            var to = ParseRecipients(Recipients);
+            var cc = ParseRecipients(CcRecipients);
+            var bcc = ParseRecipients(BccRecipients);
+
+            var invalid = to.Concat(cc).Concat(bcc)
+                .Where(address => !IsEmail(address))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
             if (invalid.Count > 0)
             {
                 SetStatus($"Not a valid email address: {string.Join(", ", invalid)}", isError: true);
@@ -164,7 +186,7 @@ public sealed class MainWindowViewModel : ViewModelBase
                 ClientSecret,
                 SenderAddress.Trim());
 
-            var mail = new MailRequest(recipients, Subject, Body, IsHtml, SaveToSentItems);
+            var mail = new MailRequest(to, cc, bcc, Subject, Body, IsHtml, SaveToSentItems);
 
             await _mailService.SendAsync(credentials, mail);
 
@@ -175,7 +197,7 @@ public sealed class MainWindowViewModel : ViewModelBase
                 SenderAddress = credentials.SenderAddress,
             });
 
-            SetStatus($"Sent to {string.Join(", ", recipients)}.", isError: false);
+            SetStatus(DescribeSent(to, cc, bcc), isError: false);
         }
         catch (GraphMailException ex)
         {
@@ -203,6 +225,27 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             SendCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    /// <summary>"Sent to a@b.com." with a trailing "(1 cc, 2 bcc)" only when those were used.</summary>
+    private static string DescribeSent(
+        IReadOnlyList<string> to,
+        IReadOnlyList<string> cc,
+        IReadOnlyList<string> bcc)
+    {
+        var extras = new List<string>();
+        if (cc.Count > 0)
+        {
+            extras.Add($"{cc.Count} cc");
+        }
+
+        if (bcc.Count > 0)
+        {
+            extras.Add($"{bcc.Count} bcc");
+        }
+
+        var sent = $"Sent to {string.Join(", ", to)}.";
+        return extras.Count > 0 ? $"{sent} ({string.Join(", ", extras)})" : sent;
     }
 
     private static List<string> ParseRecipients(string raw) =>

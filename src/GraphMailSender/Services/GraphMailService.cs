@@ -19,6 +19,8 @@ public sealed record GraphCredentials(string TenantId, string ClientId, string C
 /// <summary>The message to hand to Graph's sendMail action.</summary>
 public sealed record MailRequest(
     IReadOnlyList<string> To,
+    IReadOnlyList<string> Cc,
+    IReadOnlyList<string> Bcc,
     string Subject,
     string Body,
     bool IsHtml,
@@ -59,20 +61,32 @@ public sealed class GraphMailService
     {
         var token = await GetTokenAsync(credentials, ct).ConfigureAwait(false);
 
+        // A dictionary rather than an anonymous type so cc/bcc can be left out of the
+        // JSON entirely when unused, instead of being sent as empty arrays.
+        var message = new Dictionary<string, object>
+        {
+            ["subject"] = mail.Subject,
+            ["body"] = new
+            {
+                contentType = mail.IsHtml ? "HTML" : "Text",
+                content = mail.Body,
+            },
+            ["toRecipients"] = ToRecipients(mail.To),
+        };
+
+        if (mail.Cc.Count > 0)
+        {
+            message["ccRecipients"] = ToRecipients(mail.Cc);
+        }
+
+        if (mail.Bcc.Count > 0)
+        {
+            message["bccRecipients"] = ToRecipients(mail.Bcc);
+        }
+
         var payload = new
         {
-            message = new
-            {
-                subject = mail.Subject,
-                body = new
-                {
-                    contentType = mail.IsHtml ? "HTML" : "Text",
-                    content = mail.Body,
-                },
-                toRecipients = mail.To
-                    .Select(address => new { emailAddress = new { address } })
-                    .ToArray(),
-            },
+            message,
             saveToSentItems = mail.SaveToSentItems,
         };
 
@@ -135,6 +149,9 @@ public sealed class GraphMailService
             throw new GraphMailException($"Sign-in failed: {Flatten(ex)}", ex);
         }
     }
+
+    private static object[] ToRecipients(IReadOnlyList<string> addresses) =>
+        addresses.Select(address => new { emailAddress = new { address } }).ToArray();
 
     /// <summary>
     /// Joins an exception chain into one line. Azure.Identity's own message is just

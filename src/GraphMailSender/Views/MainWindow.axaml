@@ -7,7 +7,7 @@
         x:Class="GraphMailSender.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Graph Mail Sender"
-        Width="640" Height="700"
+        Width="640" Height="790"
         MinWidth="520" MinHeight="520">
 
     <Window.Styles>
@@ -74,18 +74,28 @@
 
             <TextBlock Classes="section" Text="Message" />
 
-            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,*">
+            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,*">
                 <TextBlock Grid.Row="0" Grid.Column="0" Classes="label" Text="To" />
                 <TextBox Grid.Row="0" Grid.Column="1"
                          Text="{Binding Recipients}"
                          PlaceholderText="someone@example.com; another@example.com" />
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Classes="label" Text="Subject" />
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Subject}" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="label" Text="Cc" />
+                <TextBox Grid.Row="1" Grid.Column="1"
+                         Text="{Binding CcRecipients}"
+                         PlaceholderText="optional" />
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Classes="label" Text="Message"
-                           VerticalAlignment="Top" Margin="0,6,12,0" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="label" Text="Bcc" />
                 <TextBox Grid.Row="2" Grid.Column="1"
+                         Text="{Binding BccRecipients}"
+                         PlaceholderText="optional" />
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Classes="label" Text="Subject" />
+                <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Subject}" />
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Classes="label" Text="Message"
+                           VerticalAlignment="Top" Margin="0,6,12,0" />
+                <TextBox Grid.Row="4" Grid.Column="1"
                          Text="{Binding Body}"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
