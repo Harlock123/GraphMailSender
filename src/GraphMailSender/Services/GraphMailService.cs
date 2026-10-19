@@ -16,6 +16,9 @@ namespace GraphMailSender.Services;
 /// <summary>Everything the app registration needs to acquire an app-only Graph token.</summary>
 public sealed record GraphCredentials(string TenantId, string ClientId, string ClientSecret, string SenderAddress);
 
+/// <summary>A file to attach, already read into memory.</summary>
+public sealed record MailAttachment(string Name, string ContentType, byte[] Content);
+
 /// <summary>The message to hand to Graph's sendMail action.</summary>
 public sealed record MailRequest(
     IReadOnlyList<string> To,
@@ -24,7 +27,8 @@ public sealed record MailRequest(
     string Subject,
     string Body,
     bool IsHtml,
-    bool SaveToSentItems);
+    bool SaveToSentItems,
+    IReadOnlyList<MailAttachment> Attachments);
 
 /// <summary>Raised when Graph (or the token endpoint) says no. Message is already user-readable.</summary>
 public sealed class GraphMailException(string message, Exception? inner = null) : Exception(message, inner);
@@ -38,6 +42,14 @@ public sealed class GraphMailService
 {
     private const string GraphScope = "https://graph.microsoft.com/.default";
     private const string GraphBaseUrl = "https://graph.microsoft.com/v1.0";
+
+    /// <summary>
+    /// Attachments ride along inside the sendMail request body, which Graph caps at 4 MB -
+    /// and base64 inflates bytes by a third. Past roughly 3 MB of file data you have to
+    /// create a draft and upload through an upload session instead, which this app does
+    /// not implement.
+    /// </summary>
+    public const long MaxInlineAttachmentBytes = 3L * 1024 * 1024;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -59,6 +71,15 @@ public sealed class GraphMailService
 
     public async Task SendAsync(GraphCredentials credentials, MailRequest mail, CancellationToken ct = default)
     {
+        var attachmentBytes = mail.Attachments.Sum(attachment => (long)attachment.Content.Length);
+        if (attachmentBytes > MaxInlineAttachmentBytes)
+        {
+            throw new GraphMailException(
+                $"Attachments total {ByteSize.Format(attachmentBytes)}, over the " +
+                $"{ByteSize.Format(MaxInlineAttachmentBytes)} that fits in a sendMail request. " +
+                "Larger files need a Graph upload session, which this app doesn't implement.");
+        }
+
         var token = await GetTokenAsync(credentials, ct).ConfigureAwait(false);
 
         // A dictionary rather than an anonymous type so any unused recipient list can be
@@ -87,6 +108,20 @@ public sealed class GraphMailService
         if (mail.Bcc.Count > 0)
         {
             message["bccRecipients"] = ToRecipients(mail.Bcc);
+        }
+
+        if (mail.Attachments.Count > 0)
+        {
+            // Dictionaries again here: "@odata.type" isn't a legal C# property name.
+            message["attachments"] = mail.Attachments
+                .Select(attachment => new Dictionary<string, object>
+                {
+                    ["@odata.type"] = "#microsoft.graph.fileAttachment",
+                    ["name"] = attachment.Name,
+                    ["contentType"] = attachment.ContentType,
+                    ["contentBytes"] = Convert.ToBase64String(attachment.Content),
+                })
+                .ToArray();
         }
 
         var payload = new

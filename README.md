@@ -136,6 +136,7 @@ sends one message at a time, so you will only meet these limits by driving it ha
 | Bcc | Optional blind-carbon-copy addresses, same separators as To. Other recipients cannot see these |
 | Subject | Message subject. May be left empty |
 | Message | Body text. Required |
+| Attachments | Files to attach, chosen with **Add files…**. Pick more than once to keep adding; **✕** removes one. Total capped at 3 MB — see below |
 | HTML body | Sends the body as `contentType: HTML` instead of `Text`. The box is a plain text editor either way — paste markup in yourself |
 | Save to Sent Items | Whether Graph keeps a copy in the sender's Sent Items. On by default |
 
@@ -145,6 +146,21 @@ recipient field is required on its own, so a Bcc-only send is fine. Subject is o
 
 Every address across all three fields is validated before anything is sent, and any recipient
 field left empty is omitted from the Graph request rather than sent as an empty array.
+
+### Attachments and the 3 MB limit
+
+Attachments are sent as `fileAttachment` objects inside the `sendMail` request body. Graph
+caps that whole request at 4 MB, and base64 encoding inflates file bytes by a third, so the
+app stops you at **3 MB of files in total** — Send is disabled and the attachment list turns
+red once you cross it.
+
+Getting past that ceiling means creating a draft message and pushing each file through an
+[upload session](https://learn.microsoft.com/en-us/graph/api/attachment-createuploadsession),
+a different and considerably longer flow that this app does not implement.
+
+Files are read from disk at send time, not when you pick them, so editing a file after
+attaching it sends the newer contents. A file that has moved or become unreadable in between
+reports `Could not read <name>` instead of sending a partial message.
 
 ## Settings and secrets
 
@@ -191,14 +207,20 @@ Graph's JSON error envelope to surface the `code`/`message` pair:
 
 ```
 src/GraphMailSender/
-  Program.cs                        Avalonia entry point
-  App.axaml(.cs)                    Application + Fluent theme
-  Views/MainWindow.axaml(.cs)       The single window
-  ViewModels/MainWindowViewModel.cs Input state, validation, send orchestration
-  ViewModels/ViewModelBase.cs       INotifyPropertyChanged helper
-  ViewModels/AsyncRelayCommand.cs   Minimal async ICommand
-  Services/GraphMailService.cs      Token acquisition + sendMail call
-  Services/SettingsStore.cs         Non-secret settings persistence
+  Program.cs                           Avalonia entry point
+  App.axaml(.cs)                       Application + Fluent theme
+  Views/MainWindow.axaml(.cs)          The single window
+  Views/StorageProviderFilePicker.cs   IFilePickerService via Avalonia storage
+  ViewModels/MainWindowViewModel.cs    Input state, validation, send orchestration
+  ViewModels/AttachmentViewModel.cs    One pending attachment + its remove command
+  ViewModels/ViewModelBase.cs          INotifyPropertyChanged helper
+  ViewModels/AsyncRelayCommand.cs      Minimal async ICommand
+  ViewModels/RelayCommand.cs           Synchronous ICommand with a parameter
+  Services/GraphMailService.cs         Token acquisition + sendMail call
+  Services/SettingsStore.cs            Non-secret settings persistence
+  Services/IFilePickerService.cs       File-picking seam, keeps Avalonia out of the VM
+  Services/MimeTypes.cs                Extension to content-type lookup
+  Services/ByteSize.cs                 Human-readable file sizes
 ```
 
 `GraphMailService` uses `Azure.Identity` for the token and plain `HttpClient` + JSON for the

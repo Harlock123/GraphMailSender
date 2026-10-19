@@ -7,7 +7,7 @@
         x:Class="GraphMailSender.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Graph Mail Sender"
-        Width="640" Height="790"
+        Width="640" Height="870"
         MinWidth="520" MinHeight="520">
 
     <Window.Styles>
@@ -101,6 +101,41 @@
                          TextWrapping="Wrap"
                          MinHeight="180"
                          VerticalContentAlignment="Top" />
+            </Grid>
+
+            <Grid ColumnDefinitions="140,*" Margin="0,4,0,12">
+                <TextBlock Grid.Column="0" Classes="label" Text="Attachments"
+                           VerticalAlignment="Top" Margin="0,6,12,0" />
+                <StackPanel Grid.Column="1" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Content="Add files…" Command="{Binding AddAttachmentsCommand}" Padding="12,6" />
+                        <TextBlock Text="{Binding AttachmentSummary}"
+                                   VerticalAlignment="Center" Opacity="0.7" />
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding Attachments}" IsVisible="{Binding HasAttachments}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AttachmentViewModel">
+                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
+                                    <TextBlock Grid.Column="0" Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding SizeDisplay}"
+                                               Opacity="0.55" Margin="12,0"
+                                               VerticalAlignment="Center" />
+                                    <Button Grid.Column="2" Content="✕"
+                                            Command="{Binding RemoveCommand}"
+                                            ToolTip.Tip="Remove"
+                                            Padding="8,2" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Classes="status error"
+                               IsVisible="{Binding AttachmentsTooLarge}"
+                               Text="{Binding AttachmentLimitMessage}" />
+                </StackPanel>
             </Grid>
 
             <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,0,0,12">

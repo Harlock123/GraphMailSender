@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Threading.Tasks;
@@ -12,6 +15,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private static readonly char[] RecipientSeparators = [',', ';', ' ', '\t', '\r', '\n'];
 
     private readonly GraphMailService _mailService;
+    private readonly IFilePickerService? _filePicker;
 
     private string _tenantId = "";
     private string _clientId = "";
@@ -28,13 +32,15 @@ public sealed class MainWindowViewModel : ViewModelBase
     private string _statusMessage = "";
     private bool _statusIsError;
 
-    public MainWindowViewModel() : this(new GraphMailService())
+    public MainWindowViewModel() : this(new GraphMailService(), filePicker: null)
     {
     }
 
-    public MainWindowViewModel(GraphMailService mailService)
+    public MainWindowViewModel(GraphMailService mailService, IFilePickerService? filePicker)
     {
         _mailService = mailService;
+        _filePicker = filePicker;
+        Attachments.CollectionChanged += OnAttachmentsChanged;
 
         var settings = SettingsStore.Load();
         _tenantId = settings.TenantId;
@@ -43,9 +49,14 @@ public sealed class MainWindowViewModel : ViewModelBase
         _clientSecret = Environment.GetEnvironmentVariable("GRAPH_CLIENT_SECRET")?.Trim() ?? "";
 
         SendCommand = new AsyncRelayCommand(SendAsync, () => !IsBusy && IsInputValid);
+        AddAttachmentsCommand = new AsyncRelayCommand(AddAttachmentsAsync, () => _filePicker is not null);
     }
 
     public AsyncRelayCommand SendCommand { get; }
+
+    public AsyncRelayCommand AddAttachmentsCommand { get; }
+
+    public ObservableCollection<AttachmentViewModel> Attachments { get; } = [];
 
     public string TenantId
     {
@@ -151,19 +162,90 @@ public sealed class MainWindowViewModel : ViewModelBase
         private set => SetProperty(ref _statusIsError, value);
     }
 
+    public long TotalAttachmentBytes => Attachments.Sum(attachment => attachment.SizeBytes);
+
+    public bool HasAttachments => Attachments.Count > 0;
+
+    public string AttachmentSummary => Attachments.Count switch
+    {
+        0 => "No files attached",
+        1 => $"1 file, {ByteSize.Format(TotalAttachmentBytes)}",
+        var count => $"{count} files, {ByteSize.Format(TotalAttachmentBytes)}",
+    };
+
+    public bool AttachmentsTooLarge => TotalAttachmentBytes > GraphMailService.MaxInlineAttachmentBytes;
+
+    public string AttachmentLimitMessage =>
+        $"Over the {ByteSize.Format(GraphMailService.MaxInlineAttachmentBytes)} limit for " +
+        "attachments sent this way. Remove some files.";
+
     private bool IsInputValid =>
         !string.IsNullOrWhiteSpace(TenantId)
         && !string.IsNullOrWhiteSpace(ClientId)
         && !string.IsNullOrWhiteSpace(ClientSecret)
         && IsEmail(SenderAddress)
         && HasAnyRecipient
-        && !string.IsNullOrWhiteSpace(Body);
+        && !string.IsNullOrWhiteSpace(Body)
+        && !AttachmentsTooLarge;
 
     /// <summary>Graph only needs one recipient somewhere - To, Cc or Bcc all count.</summary>
     private bool HasAnyRecipient =>
         ParseRecipients(Recipients).Count
         + ParseRecipients(CcRecipients).Count
         + ParseRecipients(BccRecipients).Count > 0;
+
+    private async Task AddAttachmentsAsync()
+    {
+        if (_filePicker is null)
+        {
+            return;
+        }
+
+        var paths = await _filePicker.PickFilesAsync();
+        foreach (var path in paths)
+        {
+            // Picking the same file twice would attach it twice.
+            if (Attachments.Any(a => string.Equals(a.FilePath, path, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            Attachments.Add(new AttachmentViewModel(path, item => Attachments.Remove(item)));
+        }
+    }
+
+    private void OnAttachmentsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(TotalAttachmentBytes));
+        OnPropertyChanged(nameof(HasAttachments));
+        OnPropertyChanged(nameof(AttachmentSummary));
+        OnPropertyChanged(nameof(AttachmentsTooLarge));
+        SendCommand.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>Reads each pending attachment off disk. Files can move between picking and sending.</summary>
+    private bool TryReadAttachments(out List<MailAttachment> attachments)
+    {
+        attachments = [];
+
+        foreach (var item in Attachments)
+        {
+            try
+            {
+                attachments.Add(new MailAttachment(
+                    item.Name,
+                    MimeTypes.ForFile(item.FilePath),
+                    File.ReadAllBytes(item.FilePath)));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                SetStatus($"Could not read {item.Name}: {ex.Message}", isError: true);
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     private async Task SendAsync()
     {
@@ -192,7 +274,13 @@ public sealed class MainWindowViewModel : ViewModelBase
                 ClientSecret,
                 SenderAddress.Trim());
 
-            var mail = new MailRequest(to, cc, bcc, Subject, Body, IsHtml, SaveToSentItems);
+            if (!TryReadAttachments(out var attachments))
+            {
+                return;
+            }
+
+            var mail = new MailRequest(
+                to, cc, bcc, Subject, Body, IsHtml, SaveToSentItems, attachments);
 
             await _mailService.SendAsync(credentials, mail);
 
