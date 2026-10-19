@@ -61,8 +61,9 @@ public sealed class GraphMailService
     {
         var token = await GetTokenAsync(credentials, ct).ConfigureAwait(false);
 
-        // A dictionary rather than an anonymous type so cc/bcc can be left out of the
-        // JSON entirely when unused, instead of being sent as empty arrays.
+        // A dictionary rather than an anonymous type so any unused recipient list can be
+        // left out of the JSON entirely instead of being sent as an empty array. Graph
+        // needs at least one recipient across to/cc/bcc; the view model enforces that.
         var message = new Dictionary<string, object>
         {
             ["subject"] = mail.Subject,
@@ -71,8 +72,12 @@ public sealed class GraphMailService
                 contentType = mail.IsHtml ? "HTML" : "Text",
                 content = mail.Body,
             },
-            ["toRecipients"] = ToRecipients(mail.To),
         };
+
+        if (mail.To.Count > 0)
+        {
+            message["toRecipients"] = ToRecipients(mail.To);
+        }
 
         if (mail.Cc.Count > 0)
         {

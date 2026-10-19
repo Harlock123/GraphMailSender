@@ -156,8 +156,14 @@ public sealed class MainWindowViewModel : ViewModelBase
         && !string.IsNullOrWhiteSpace(ClientId)
         && !string.IsNullOrWhiteSpace(ClientSecret)
         && IsEmail(SenderAddress)
-        && ParseRecipients(Recipients).Count > 0
+        && HasAnyRecipient
         && !string.IsNullOrWhiteSpace(Body);
+
+    /// <summary>Graph only needs one recipient somewhere - To, Cc or Bcc all count.</summary>
+    private bool HasAnyRecipient =>
+        ParseRecipients(Recipients).Count
+        + ParseRecipients(CcRecipients).Count
+        + ParseRecipients(BccRecipients).Count > 0;
 
     private async Task SendAsync()
     {
@@ -244,7 +250,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             extras.Add($"{bcc.Count} bcc");
         }
 
-        var sent = $"Sent to {string.Join(", ", to)}.";
+        // A Bcc-only send has nothing to name, so don't claim "Sent to ."
+        var sent = to.Count > 0 ? $"Sent to {string.Join(", ", to)}." : "Sent.";
         return extras.Count > 0 ? $"{sent} ({string.Join(", ", extras)})" : sent;
     }
 

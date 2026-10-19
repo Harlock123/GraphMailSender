@@ -139,11 +139,12 @@ sends one message at a time, so you will only meet these limits by driving it ha
 | HTML body | Sends the body as `contentType: HTML` instead of `Text`. The box is a plain text editor either way — paste markup in yourself |
 | Save to Sent Items | Whether Graph keeps a copy in the sender's Sent Items. On by default |
 
-**Send** is disabled until Tenant ID, Client ID, Client secret, a valid *Send as* address, at
-least one **To** recipient, and a non-empty body are all present. Subject, Cc and Bcc are
-optional — a Cc or Bcc address alone will not satisfy the recipient requirement, and empty
-Cc/Bcc fields are left out of the Graph request entirely rather than sent as empty arrays.
-Every address across all three fields is validated before anything is sent.
+**Send** is disabled until Tenant ID, Client ID, Client secret, a valid *Send as* address, a
+non-empty body, and **at least one recipient in To, Cc or Bcc** are all present. No individual
+recipient field is required on its own, so a Bcc-only send is fine. Subject is optional too.
+
+Every address across all three fields is validated before anything is sent, and any recipient
+field left empty is omitted from the Graph request rather than sent as an empty array.
 
 ## Settings and secrets
 
